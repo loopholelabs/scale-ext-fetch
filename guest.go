@@ -54,8 +54,8 @@ func ext_HttpFetch_HttpConnector_Fetch(instance uint64, offset uint32, length ui
 
 // Define any global functions here...
 
-//export ext_HttpFetch_new
-//go:linkname ext_HttpFetch_new
+//export ext_HttpFetch_New
+//go:linkname ext_HttpFetch_New
 func ext_HttpFetch_New(offset uint32, length uint32) uint64
 
 func New(params *HttpConfig) (HttpConnector, error) {
