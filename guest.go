@@ -24,7 +24,6 @@ func ext_HttpFetch_Resize(size uint32) uint32 {
 	return uint32(uintptr(unsafe.Pointer(&readBuffer[0])))
 }
 
-
 // Define any interfaces we need here...
 // Also define structs we can use to hold instanceId
 
@@ -53,14 +52,10 @@ func (d *_HttpConnector) Fetch(params *ConnectionDetails) (HttpResponse, error) 
 	ext_HttpFetch_HttpConnector_Fetch(d.instanceId, off, l)
 	// IF the return type is a model, we should read the data from the read buffer.
 
-	ret := &HttpResponse{
-		StatusCode: int32(len(readBuffer)),
-		Headers: map[string]StringList{},
-		Body: []byte{},
-	}
+	ret := &HttpResponse{}
 	r, err := DecodeHttpResponse(ret, readBuffer)
-
 	return *r, err
+
 }
 
 //export ext_HttpFetch_HttpConnector_Fetch
