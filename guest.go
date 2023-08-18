@@ -14,6 +14,17 @@ var (
 	readBuffer  []byte
 )
 
+//export ext_HttpFetch_Resize
+//go:linkname ext_HttpFetch_Resize
+func ext_HttpFetch_Resize(size uint32) uint32 {
+	if uint32(cap(readBuffer)) < size {
+		readBuffer = append(make([]byte, 0, uint32(len(readBuffer))+size), readBuffer...)
+	}
+	readBuffer = readBuffer[:size]
+	return uint32(uintptr(unsafe.Pointer(&readBuffer[0])))
+}
+
+
 // Define any interfaces we need here...
 // Also define structs we can use to hold instanceId
 
@@ -42,10 +53,14 @@ func (d *_HttpConnector) Fetch(params *ConnectionDetails) (HttpResponse, error) 
 	ext_HttpFetch_HttpConnector_Fetch(d.instanceId, off, l)
 	// IF the return type is a model, we should read the data from the read buffer.
 
-	ret := &HttpResponse{}
+	ret := &HttpResponse{
+		StatusCode: int32(len(readBuffer)),
+		Headers: map[string]StringList{},
+		Body: []byte{},
+	}
 	r, err := DecodeHttpResponse(ret, readBuffer)
-	return *r, err
 
+	return *r, err
 }
 
 //export ext_HttpFetch_HttpConnector_Fetch
