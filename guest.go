@@ -58,7 +58,7 @@ func ext_HttpFetch_HttpConnector_Fetch(instance uint64, offset uint32, length ui
 //go:linkname ext_HttpFetch_new
 func ext_HttpFetch_new(offset uint32, length uint32) uint64
 
-func new(params *HttpConfig) (HttpConnector, error) {
+func New(params *HttpConfig) (HttpConnector, error) {
 	// First we take the params, serialize them.
 	writeBuffer.Reset()
 	params.Encode(writeBuffer)
