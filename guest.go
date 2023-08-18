@@ -56,7 +56,7 @@ func ext_HttpFetch_HttpConnector_Fetch(instance uint64, offset uint32, length ui
 
 //export ext_HttpFetch_new
 //go:linkname ext_HttpFetch_new
-func ext_HttpFetch_new(offset uint32, length uint32) uint64
+func ext_HttpFetch_New(offset uint32, length uint32) uint64
 
 func New(params *HttpConfig) (HttpConnector, error) {
 	// First we take the params, serialize them.
@@ -69,7 +69,7 @@ func New(params *HttpConfig) (HttpConnector, error) {
 	l := uint32(writeBuffer.Len())
 
 	// Now make the call to the host.
-	v := ext_HttpFetch_new(off, l)
+	v := ext_HttpFetch_New(off, l)
 	// IF the return type is an interface return ifc, which contains hidden instanceId.
 
 	// TODO: Handle error from host. In this case there'll be an error in the readBuffer
