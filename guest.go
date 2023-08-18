@@ -14,23 +14,72 @@ var (
 	readBuffer  []byte
 )
 
-// Write serializes the signature into the global writeBuffer and returns the pointer to the buffer and its size
-//
-// Users should not use this method.
-func Write(ctx *HttpConfig) (uint32, uint32) {
+// Define any interfaces we need here...
+// Also define structs we can use to hold instanceId
+
+type HttpConnector interface {
+	Fetch(*ConnectionDetails) (HttpResponse, error)
+}
+
+// Define concrete types with a hidden instanceId
+
+type _HttpConnector struct {
+	instanceId uint64
+}
+
+func (d *_HttpConnector) Fetch(params *ConnectionDetails) (HttpResponse, error) {
+
+	// First we take the params, serialize them.
 	writeBuffer.Reset()
-	ctx.Encode(writeBuffer)
+	params.Encode(writeBuffer)
 	underlying := writeBuffer.Bytes()
 	ptr := &underlying[0]
 	unsafePtr := uintptr(unsafe.Pointer(ptr))
-	return uint32(unsafePtr), uint32(writeBuffer.Len())
+	off := uint32(unsafePtr)
+	l := uint32(writeBuffer.Len())
+
+	// Now make the call to the host.
+	ext_HttpFetch_HttpConnector_Fetch(d.instanceId, off, l)
+	// IF the return type is a model, we should read the data from the read buffer.
+
+	ret := &HttpResponse{}
+	r, err := DecodeHttpResponse(ret, readBuffer)
+	return *r, err
+
 }
 
-// Read deserializes signature from the global readBuffer
-//
-// Users should not use this method.
-func Read(ctx *HttpConnector) (*HttpConnector, error) {
-	return DecodeHttpConnector(ctx, readBuffer)
+//export ext_HttpFetch_HttpConnector_Fetch
+//go:linkname ext_HttpFetch_HttpConnector_Fetch
+func ext_HttpFetch_HttpConnector_Fetch(instance uint64, offset uint32, length uint32) uint64
+
+// Define any global functions here...
+
+//export ext_HttpFetch_new
+//go:linkname ext_HttpFetch_new
+func ext_HttpFetch_new(offset uint32, length uint32) uint64
+
+func new(params *HttpConfig) (HttpConnector, error) {
+	// First we take the params, serialize them.
+	writeBuffer.Reset()
+	params.Encode(writeBuffer)
+	underlying := writeBuffer.Bytes()
+	ptr := &underlying[0]
+	unsafePtr := uintptr(unsafe.Pointer(ptr))
+	off := uint32(unsafePtr)
+	l := uint32(writeBuffer.Len())
+
+	// Now make the call to the host.
+	v := ext_HttpFetch_new(off, l)
+	// IF the return type is an interface return ifc, which contains hidden instanceId.
+
+	// TODO: Handle error from host. In this case there'll be an error in the readBuffer
+
+	ret := &_HttpConnector{
+		instanceId: v,
+	}
+
+	return ret, nil
+
 }
 
 // Error serializes an error into the global writeBuffer and returns a pointer to the buffer and its size
@@ -44,34 +93,3 @@ func Error(err error) (uint32, uint32) {
 	unsafePtr := uintptr(unsafe.Pointer(ptr))
 	return uint32(unsafePtr), uint32(writeBuffer.Len())
 }
-
-// Create a new instance of the extension.
-func New(params *HttpConfig) (*HttpConnector, error) {
-	ext_new_HttpFetch(Write(params))
-	ctx := &HttpConnector{}
-	return Read(ctx)
-}
-
-//export ext_new_HttpFetch
-//go:linkname ext_new_HttpFetch
-func ext_new_HttpFetch(offset uint32, length uint32)
-
-// Create the functions that are defined in the schema.
-
-func (e *HttpConnector) Fetch(params *ConnectionDetails) (*HttpResponse, error) {
-	writeBuffer.Reset()
-	params.Encode(writeBuffer)
-	underlying := writeBuffer.Bytes()
-	ptr := &underlying[0]
-	unsafePtr := uintptr(unsafe.Pointer(ptr))
-	off := uint32(unsafePtr)
-	l := uint32(writeBuffer.Len())
-
-	ext_func_HttpFetch_Fetch(e.InstanceId, off, l)
-	ctx := &HttpResponse{}
-	return DecodeHttpResponse(ctx, readBuffer)
-}
-
-//export ext_func_HttpFetch_Fetch
-//go:linkname ext_func_HttpFetch_Fetch
-func ext_func_HttpFetch_Fetch(instance uint32, offset uint32, length uint32)

@@ -64,106 +64,6 @@ func _decodeHttpConfig(x *HttpConfig, d *polyglot.Decoder) (*HttpConfig, error) 
 	return x, nil
 }
 
-type HttpConnector struct {
-	InstanceId uint32
-}
-
-func NewHttpConnector() *HttpConnector {
-	return &HttpConnector{
-
-		InstanceId: 0,
-	}
-}
-
-func (x *HttpConnector) Encode(b *polyglot.Buffer) {
-	e := polyglot.Encoder(b)
-	if x == nil {
-		e.Nil()
-	} else {
-
-		e.Uint32(x.InstanceId)
-
-	}
-}
-
-func DecodeHttpConnector(x *HttpConnector, b []byte) (*HttpConnector, error) {
-	d := polyglot.GetDecoder(b)
-	defer d.Return()
-	return _decodeHttpConnector(x, d)
-}
-
-func _decodeHttpConnector(x *HttpConnector, d *polyglot.Decoder) (*HttpConnector, error) {
-	if d.Nil() {
-		return nil, nil
-	}
-
-	err, _ := d.Error()
-	if err != nil {
-		return nil, err
-	}
-
-	if x == nil {
-		x = NewHttpConnector()
-	}
-
-	x.InstanceId, err = d.Uint32()
-	if err != nil {
-		return nil, err
-	}
-
-	return x, nil
-}
-
-type ConnectionDetails struct {
-	Url string
-}
-
-func NewConnectionDetails() *ConnectionDetails {
-	return &ConnectionDetails{
-
-		Url: "https://google.com",
-	}
-}
-
-func (x *ConnectionDetails) Encode(b *polyglot.Buffer) {
-	e := polyglot.Encoder(b)
-	if x == nil {
-		e.Nil()
-	} else {
-
-		e.String(x.Url)
-
-	}
-}
-
-func DecodeConnectionDetails(x *ConnectionDetails, b []byte) (*ConnectionDetails, error) {
-	d := polyglot.GetDecoder(b)
-	defer d.Return()
-	return _decodeConnectionDetails(x, d)
-}
-
-func _decodeConnectionDetails(x *ConnectionDetails, d *polyglot.Decoder) (*ConnectionDetails, error) {
-	if d.Nil() {
-		return nil, nil
-	}
-
-	err, _ := d.Error()
-	if err != nil {
-		return nil, err
-	}
-
-	if x == nil {
-		x = NewConnectionDetails()
-	}
-
-	x.Url, err = d.String()
-	if err != nil {
-		return nil, err
-	}
-
-	return x, nil
-}
-
 type HttpResponse struct {
 	Headers map[string]StringList
 
@@ -315,6 +215,56 @@ func _decodeStringList(x *StringList, d *polyglot.Decoder) (*StringList, error) 
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	return x, nil
+}
+
+type ConnectionDetails struct {
+	Url string
+}
+
+func NewConnectionDetails() *ConnectionDetails {
+	return &ConnectionDetails{
+
+		Url: "https://google.com",
+	}
+}
+
+func (x *ConnectionDetails) Encode(b *polyglot.Buffer) {
+	e := polyglot.Encoder(b)
+	if x == nil {
+		e.Nil()
+	} else {
+
+		e.String(x.Url)
+
+	}
+}
+
+func DecodeConnectionDetails(x *ConnectionDetails, b []byte) (*ConnectionDetails, error) {
+	d := polyglot.GetDecoder(b)
+	defer d.Return()
+	return _decodeConnectionDetails(x, d)
+}
+
+func _decodeConnectionDetails(x *ConnectionDetails, d *polyglot.Decoder) (*ConnectionDetails, error) {
+	if d.Nil() {
+		return nil, nil
+	}
+
+	err, _ := d.Error()
+	if err != nil {
+		return nil, err
+	}
+
+	if x == nil {
+		x = NewConnectionDetails()
+	}
+
+	x.Url, err = d.String()
+	if err != nil {
+		return nil, err
 	}
 
 	return x, nil
