@@ -17,10 +17,11 @@ var (
 //export ext_HttpFetch_Resize
 //go:linkname ext_HttpFetch_Resize
 func ext_HttpFetch_Resize(size uint32) uint32 {
-	if uint32(cap(readBuffer)) < size {
-		readBuffer = append(make([]byte, 0, uint32(len(readBuffer))+size), readBuffer...)
-	}
-	readBuffer = readBuffer[:size]
+	readBuffer = make([]byte, size)
+	//if uint32(cap(readBuffer)) < size {
+	//	readBuffer = append(make([]byte, 0, uint32(len(readBuffer))+size), readBuffer...)
+	//}
+	//readBuffer = readBuffer[:size]
 	return uint32(uintptr(unsafe.Pointer(&readBuffer[0])))
 }
 
