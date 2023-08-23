@@ -7,31 +7,74 @@ package extfetch
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 	"sync"
+	"sync/atomic"
 
-	"github.com/loopholelabs/polyglot"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
+
+	"github.com/loopholelabs/polyglot"
 )
 
-var gid uint64 = 0
-var instancesLock sync.Mutex
-var instances map[uint64]*HostHttpConnector
+const identifier = "HttpFetch:alpha"
 
-func NewHost(module wazero.HostModuleBuilder) {
-	module.NewFunctionBuilder().
-		WithGoModuleFunction(api.GoModuleFunc(host_ext_HttpFetch_HttpConnector_Fetch), []api.ValueType{api.ValueTypeI64, api.ValueTypeI32, api.ValueTypeI32}, []api.ValueType{api.ValueTypeI64}).
-		WithParameterNames("instance", "pointer", "length").Export("ext_HttpFetch_HttpConnector_Fetch")
+// Interface to the extension impl. This is what the implementor should create
 
-	module.NewFunctionBuilder().
-		WithGoModuleFunction(api.GoModuleFunc(host_ext_HttpFetch_New), []api.ValueType{api.ValueTypeI32, api.ValueTypeI32}, []api.ValueType{api.ValueTypeI64}).
-		WithParameterNames("instance", "pointer", "length").Export("ext_HttpFetch_New")
-
-	instances = make(map[uint64]*HostHttpConnector)
+type HttpFetchIfc interface {
+	New(params *HttpConfig) (HttpConnector, error)
 }
 
-func host_ext_HttpFetch_New(ctx context.Context, mod api.Module, params []uint64) {
+// TODO: Atm the interfaces are defined in guest. They should be pulled out somewhere prolly.
+
+// Write an error to the scale function guest buffer.
+func hostError(ctx context.Context, mod api.Module, err error) {
+	b := polyglot.NewBuffer()
+	polyglot.Encoder(b).Error(err)
+
+	writeBuffer, err := mod.ExportedFunction("ext_HttpFetch_Resize").Call(ctx, uint64(b.Len()))
+
+	if err != nil {
+		panic(err)
+	}
+
+	if !mod.Memory().Write(uint32(writeBuffer[0]), b.Bytes()) {
+		panic(err)
+	}
+}
+
+func InstallExtension(module wazero.HostModuleBuilder, impl HttpFetchIfc) {
+
+	hostWrapper := &HttpFetchHost{impl: impl}
+
+	// Add global functions to the runtime
+
+	fn := hostWrapper.host_ext_HttpFetch_New
+
+	module.NewFunctionBuilder().
+		WithGoModuleFunction(api.GoModuleFunc(fn), []api.ValueType{api.ValueTypeI32, api.ValueTypeI32}, []api.ValueType{api.ValueTypeI64}).
+		WithParameterNames("instance", "pointer", "length").Export("ext_HttpFetch_New")
+
+	hostWrapper.instances_HttpConnector = make(map[uint64]HttpConnector)
+
+	fn = hostWrapper.host_ext_HttpFetch_HttpConnector_Fetch
+
+	module.NewFunctionBuilder().
+		WithGoModuleFunction(api.GoModuleFunc(fn), []api.ValueType{api.ValueTypeI64, api.ValueTypeI32, api.ValueTypeI32}, []api.ValueType{api.ValueTypeI64}).
+		WithParameterNames("instance", "pointer", "length").Export("ext_HttpFetch_HttpConnector_Fetch")
+
+}
+
+type HttpFetchHost struct {
+	impl HttpFetchIfc
+
+	gid_HttpConnector           uint64
+	instancesLock_HttpConnector sync.Mutex
+	instances_HttpConnector     map[uint64]HttpConnector
+}
+
+// Global functions
+
+func (h *HttpFetchHost) host_ext_HttpFetch_New(ctx context.Context, mod api.Module, params []uint64) {
 	ptr := uint32(params[0])
 	length := uint32(params[1])
 	mem := mod.Memory()
@@ -43,22 +86,26 @@ func host_ext_HttpFetch_New(ctx context.Context, mod api.Module, params []uint64
 		hostError(ctx, mod, err)
 	}
 
-	r, err := HostNew(cd)
-	if err!=nil {
+	// Call the implementation
+	r, err := h.impl.New(cd)
+	if err != nil {
 		hostError(ctx, mod, err)
 	}
 
-	id := atomic.AddUint64(&gid, 1)
-	instancesLock.Lock()
-	instances[id] = r
-	instancesLock.Unlock()
+	id := atomic.AddUint64(&h.gid_HttpConnector, 1)
+	h.instancesLock_HttpConnector.Lock()
+	h.instances_HttpConnector[id] = r
+	h.instancesLock_HttpConnector.Unlock()
 
 	// Return the ID
 	params[0] = id
+
 }
 
-func host_ext_HttpFetch_HttpConnector_Fetch(ctx context.Context, mod api.Module, params []uint64) {
-	r, ok := instances[params[0]]
+func (h *HttpFetchHost) host_ext_HttpFetch_HttpConnector_Fetch(ctx context.Context, mod api.Module, params []uint64) {
+	h.instancesLock_HttpConnector.Lock()
+	r, ok := h.instances_HttpConnector[params[0]]
+	h.instancesLock_HttpConnector.Unlock()
 	if !ok {
 		hostError(ctx, mod, errors.New("Instance ID not found!"))
 	}
@@ -79,8 +126,6 @@ func host_ext_HttpFetch_HttpConnector_Fetch(ctx context.Context, mod api.Module,
 		hostError(ctx, mod, err)
 	}
 
-	// Write it, and return the packed
-
 	b := polyglot.NewBuffer()
 	resp.Encode(b)
 
@@ -93,20 +138,5 @@ func host_ext_HttpFetch_HttpConnector_Fetch(ctx context.Context, mod api.Module,
 	if !mod.Memory().Write(uint32(writeBuffer[0]), b.Bytes()) {
 		hostError(ctx, mod, err)
 	}
-}
 
-// Write an error to the scale function guest buffer.
-func hostError(ctx context.Context, mod api.Module, err error) {
-	b := polyglot.NewBuffer()
-	polyglot.Encoder(b).Error(err)
-
-	writeBuffer, err := mod.ExportedFunction("ext_HttpFetch_Resize").Call(ctx, uint64(b.Len()))
-
-	if err != nil {
-		panic(err)
-	}
-
-	if !mod.Memory().Write(uint32(writeBuffer[0]), b.Bytes()) {
-		panic(err)
-	}
 }

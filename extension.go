@@ -6,33 +6,36 @@ import (
 	"net/http"
 )
 
+type FetchExtension struct {
+}
+
 type HostHttpConnector struct {
 	Timeout int32
 }
 
-func HostNew(hc *HttpConfig) (*HostHttpConnector, error) {
+func (f *FetchExtension) New(hc *HttpConfig) (HttpConnector, error) {
 	return &HostHttpConnector{
 		Timeout: hc.Timeout,
 	}, nil
 }
 
-func (hc *HostHttpConnector) Fetch(cd *ConnectionDetails) (*HttpResponse, error) {
+func (hc *HostHttpConnector) Fetch(cd *ConnectionDetails) (HttpResponse, error) {
 	fmt.Printf("HttpConnector.Fetch[%v]\n", cd)
+	resp := HttpResponse{}
 
 	response, err := http.Get(cd.Url)
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 
-	resp := &HttpResponse{
-		StatusCode: int32(response.StatusCode),
-		Body:       body,
-		Headers:    map[string]StringList{"Hello": {Values: []string{"World"}}},
-	}
+	resp.StatusCode = int32(response.StatusCode)
+	resp.Body = body
+	resp.Headers = map[string]StringList{"Hello": {Values: []string{"World"}}}
+
 	return resp, nil
 }
