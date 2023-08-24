@@ -20,7 +20,7 @@ func (f *FetchExtension) New(hc *HttpConfig) (HttpConnector, error) {
 }
 
 func (hc *HostHttpConnector) Fetch(cd *ConnectionDetails) (HttpResponse, error) {
-	fmt.Printf("HttpConnector.Fetch[%v]\n", cd)
+	fmt.Printf("HttpConnector.Fetch[%v] (HostHttpConnector %v)\n", cd, hc)
 	resp := HttpResponse{}
 
 	response, err := http.Get(cd.Url)
