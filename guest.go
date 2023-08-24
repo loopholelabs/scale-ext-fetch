@@ -28,10 +28,6 @@ func ext_HttpFetch_Resize(size uint32) uint32 {
 // Define any interfaces we need here...
 // Also define structs we can use to hold instanceId
 
-type HttpConnector interface {
-	Fetch(*ConnectionDetails) (HttpResponse, error)
-}
-
 // Define concrete types with a hidden instanceId
 
 type _HttpConnector struct {

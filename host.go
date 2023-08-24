@@ -18,14 +18,6 @@ import (
 
 const identifier = "HttpFetch:alpha"
 
-// Interface to the extension impl. This is what the implementor should create
-
-type HttpFetchIfc interface {
-	New(params *HttpConfig) (HttpConnector, error)
-}
-
-// TODO: Atm the interfaces are defined in guest. They should be pulled out somewhere prolly.
-
 // Write an error to the scale function guest buffer.
 func hostError(ctx context.Context, mod api.Module, err error) {
 	b := polyglot.NewBuffer()
