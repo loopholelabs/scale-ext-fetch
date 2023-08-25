@@ -5,55 +5,47 @@
 package extfetch
 
 import (
-	"context"
 	"errors"
 	"sync"
 	"sync/atomic"
 
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-
 	"github.com/loopholelabs/polyglot"
+
+	"github.com/loopholelabs/scale/extension"
 )
 
 const identifier = "HttpFetch:alpha"
 
 // Write an error to the scale function guest buffer.
-func hostError(ctx context.Context, mod api.Module, err error) {
+func hostError(mem extension.ModuleMemory, resize extension.Resizer, err error) {
 	b := polyglot.NewBuffer()
 	polyglot.Encoder(b).Error(err)
 
-	writeBuffer, err := mod.ExportedFunction("ext_HttpFetch_Resize").Call(ctx, uint64(b.Len()))
+	writeBuffer, err := resize("ext_HttpFetch_Resize", uint64(b.Len()))
 
 	if err != nil {
 		panic(err)
 	}
 
-	if !mod.Memory().Write(uint32(writeBuffer[0]), b.Bytes()) {
+	if !mem.Write(uint32(writeBuffer), b.Bytes()) {
 		panic(err)
 	}
 }
 
-func InstallExtension(module wazero.HostModuleBuilder, impl HttpFetchIfc) {
+func InstallExtension(impl HttpFetchIfc) map[string]extension.InstallableFunc {
 
 	hostWrapper := &HttpFetchHost{impl: impl}
 
 	// Add global functions to the runtime
 
-	fn := hostWrapper.host_ext_HttpFetch_New
+	fns := make(map[string]extension.InstallableFunc)
 
-	module.NewFunctionBuilder().
-		WithGoModuleFunction(api.GoModuleFunc(fn), []api.ValueType{api.ValueTypeI32, api.ValueTypeI32}, []api.ValueType{api.ValueTypeI64}).
-		WithParameterNames("instance", "pointer", "length").Export("ext_HttpFetch_New")
+	fns["HttpFetch_New"] = hostWrapper.host_ext_HttpFetch_New
+	fns["HttpFetch_HttpConnector_Fetch"] = hostWrapper.host_ext_HttpFetch_HttpConnector_Fetch
 
 	hostWrapper.instances_HttpConnector = make(map[uint64]HttpConnector)
 
-	fn = hostWrapper.host_ext_HttpFetch_HttpConnector_Fetch
-
-	module.NewFunctionBuilder().
-		WithGoModuleFunction(api.GoModuleFunc(fn), []api.ValueType{api.ValueTypeI64, api.ValueTypeI32, api.ValueTypeI32}, []api.ValueType{api.ValueTypeI64}).
-		WithParameterNames("instance", "pointer", "length").Export("ext_HttpFetch_HttpConnector_Fetch")
-
+	return fns
 }
 
 type HttpFetchHost struct {
@@ -66,22 +58,21 @@ type HttpFetchHost struct {
 
 // Global functions
 
-func (h *HttpFetchHost) host_ext_HttpFetch_New(ctx context.Context, mod api.Module, params []uint64) {
+func (h *HttpFetchHost) host_ext_HttpFetch_New(mem extension.ModuleMemory, resize extension.Resizer, params []uint64) {
 	ptr := uint32(params[0])
 	length := uint32(params[1])
-	mem := mod.Memory()
 	data, _ := mem.Read(ptr, length)
 
 	cd := &HttpConfig{}
 	cd, err := DecodeHttpConfig(cd, data)
 	if err != nil {
-		hostError(ctx, mod, err)
+		hostError(mem, resize, err)
 	}
 
 	// Call the implementation
 	r, err := h.impl.New(cd)
 	if err != nil {
-		hostError(ctx, mod, err)
+		hostError(mem, resize, err)
 	}
 
 	id := atomic.AddUint64(&h.gid_HttpConnector, 1)
@@ -94,41 +85,40 @@ func (h *HttpFetchHost) host_ext_HttpFetch_New(ctx context.Context, mod api.Modu
 
 }
 
-func (h *HttpFetchHost) host_ext_HttpFetch_HttpConnector_Fetch(ctx context.Context, mod api.Module, params []uint64) {
+func (h *HttpFetchHost) host_ext_HttpFetch_HttpConnector_Fetch(mem extension.ModuleMemory, resize extension.Resizer, params []uint64) {
 	h.instancesLock_HttpConnector.Lock()
 	r, ok := h.instances_HttpConnector[params[0]]
 	h.instancesLock_HttpConnector.Unlock()
 	if !ok {
-		hostError(ctx, mod, errors.New("Instance ID not found!"))
+		hostError(mem, resize, errors.New("Instance ID not found!"))
 	}
 
 	ptr := uint32(params[1])
 	length := uint32(params[2])
-	mem := mod.Memory()
 	data, _ := mem.Read(ptr, length)
 
 	cd := &ConnectionDetails{}
 	cd, err := DecodeConnectionDetails(cd, data)
 	if err != nil {
-		hostError(ctx, mod, err)
+		hostError(mem, resize, err)
 	}
 
 	resp, err := r.Fetch(cd)
 	if err != nil {
-		hostError(ctx, mod, err)
+		hostError(mem, resize, err)
 	}
 
 	b := polyglot.NewBuffer()
 	resp.Encode(b)
 
-	writeBuffer, err := mod.ExportedFunction("ext_HttpFetch_Resize").Call(ctx, uint64(b.Len()))
+	writeBuffer, err := resize("ext_HttpFetch_Resize", uint64(b.Len()))
 
 	if err != nil {
-		hostError(ctx, mod, err)
+		hostError(mem, resize, err)
 	}
 
-	if !mod.Memory().Write(uint32(writeBuffer[0]), b.Bytes()) {
-		hostError(ctx, mod, err)
+	if !mem.Write(uint32(writeBuffer), b.Bytes()) {
+		hostError(mem, resize, err)
 	}
 
 }
