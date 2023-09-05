@@ -36,14 +36,15 @@ func InstallExtension(impl HttpFetchIfc) map[string]extension.InstallableFunc {
 
 	hostWrapper := &HttpFetchHost{impl: impl}
 
-	// Add global functions to the runtime
-
 	fns := make(map[string]extension.InstallableFunc)
 
-	fns["HttpFetch_New"] = hostWrapper.host_ext_HttpFetch_New
-	fns["HttpFetch_HttpConnector_Fetch"] = hostWrapper.host_ext_HttpFetch_HttpConnector_Fetch
+	// Add global functions to the runtime
+
+	fns["ext_HttpFetch_New"] = hostWrapper.host_ext_HttpFetch_New
 
 	hostWrapper.instances_HttpConnector = make(map[uint64]HttpConnector)
+
+	fns["ext_HttpFetch_HttpConnector_Fetch"] = hostWrapper.host_ext_HttpFetch_HttpConnector_Fetch
 
 	return fns
 }
